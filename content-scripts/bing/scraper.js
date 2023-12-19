@@ -12,7 +12,6 @@ function startsWithUser(messages) {
 }
 
 function getShadowElements(shadowRoot) {
-  // created by ChatGPT (not Bing)
   const fragment = new DocumentFragment();
   Array.from(shadowRoot.children).forEach((child) => {
     const clone = child.cloneNode(true);
@@ -30,31 +29,42 @@ function saveConvo() {
   if (!chatIsActive()) {
     return;
   }
+  
+  // текущий диалог
   let convo = [];
-  let chatDIV = document
-    .querySelector("cib-serp")
-    .shadowRoot.querySelector("#cib-conversation-main")
-    .shadowRoot.querySelector("#cib-chat-main");
+  let chatDIV = document.querySelector("cib-serp")
+    ?.shadowRoot.querySelector("#cib-conversation-main")
+    ?.shadowRoot.querySelector("#cib-chat-main");
+  
+  if (!chatDIV) return;
+
   let c = getShadowElements(chatDIV);
   let messages = Array.from(c.querySelectorAll("cib-message-group"));
+
   if (messages.length > 0 && !startsWithUser(messages)) {
-    /// remove the silly "Ok, reset chat" messages
     messages.shift();
-    chatLength = chatLength - 1;
   }
 
-  if (messages.length < chatLength) {
-    // rather than listen for new chat button to be pressed, listen for the conversation length to decrease
+  // замер длинны текста
+  let textContentLength = messages.reduce((total, message) => {
+    let content = message.querySelectorAll(".content");
+    Array.from(content).forEach(each => total += each.innerText.trim().length);
+    return total;
+  }, 0);
+
+  // сравнение всей длинны текста (вместо их кол-ва как в оригинале)
+  if (textContentLength < chatLength) {
     firstTime = true;
+    return;
   }
-  chatLength = messages.length;
+  chatLength = textContentLength;
 
-  let firstUser = true; // bool to save know to save the title
+  let firstUser = true;
   let title;
   for (let message of messages) {
     let source = message.getAttribute("source");
     if (source === "user") {
-      let userMessages = message.querySelectorAll(".content"); // could only be 2+ user messages in a row, so no need to do this for bots
+      let userMessages = message.querySelectorAll(".content");
       for (let each of userMessages) {
         let text = each.innerText;
         convo.push({ text: text, bot: false });
@@ -64,9 +74,9 @@ function saveConvo() {
         }
       }
     } else if (source === "bot") {
-      let botMessages = message.querySelectorAll(".content"); // could only be 2+ user messages in a row, so no need to do this for bots
+      let botMessages = message.querySelectorAll(".content");
       for (let each of botMessages) {
-        let text = each?.querySelector(`.ac-textBlock`);
+        let text = each?.querySelector(".ac-textBlock");
         if (text != null) {
           convo.push({ text: text.innerHTML, bot: true });
         }
@@ -105,5 +115,5 @@ function saveConvo() {
   }
 }
 
-const SAVE_INTERVAL = 3000; // ms
+const SAVE_INTERVAL = 1500; // ms (в оригинале - 3 сек)
 setInterval(saveConvo, SAVE_INTERVAL);
